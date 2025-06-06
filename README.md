@@ -94,6 +94,28 @@ Each inference result should be saved to a Postgres database on the backend. Fee
 - **Frontend:** React application with Fabric.js for interactive visualization. Use Typescript. You may use any UI framework you are familiar with.
 - **Database:** PostgreSQL is used to store user inputs and model predictions.
 
+## Environment Configuration
+
+The backend uses a `.env` file to manage PostgreSQL connection settings.
+
+1. Create the .env file in the backend/ directory
+You can copy the example file:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+2. Update the .env file with your local PostgreSQL settings
+Make sure to update the values (e.g., database name, user, and password) according to your environment.
+
+Ensure that your PostgreSQL server is running and the specified database already exists before starting the backend.
+
+You can initialize the database schema by running:
+
+```bash
+python backend/init_db.py
+```
+
 
 ## Delivery
 

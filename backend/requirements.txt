@@ -5,3 +5,5 @@ opencv_python==4.7.0.68
 opencv_python_headless==4.7.0.72
 Pillow==9.3.0
 Requests==2.31.0
+psycopg2-binary>=2.9
+python-dotenv>=1.0

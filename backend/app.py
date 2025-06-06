@@ -6,6 +6,10 @@ from typing import List
 from dataclasses import dataclass
 from flask import Flask, request, jsonify
 from smart_open import open
+import os
+import psycopg2
+from dotenv import load_dotenv
+import uuid
 
 app = Flask(__name__)
 
@@ -115,6 +119,31 @@ class Model:
 
 model = Model("yolov8s")
 
+# Load environment variables from .env file
+load_dotenv()
+
+# Fetch required credentials from environment
+dbname = os.environ.get("POSTGRES_DB")
+user = os.environ.get("POSTGRES_USER")
+password = os.environ.get("POSTGRES_PASSWORD")
+host = os.environ.get("POSTGRES_HOST", "localhost")
+port = os.environ.get("POSTGRES_PORT", 5432)
+
+# Validate required credentials
+if not dbname or not user or not password:
+    raise ValueError("POSTGRES_DB, POSTGRES_USER, and POSTGRES_PASSWORD must be set in environment variables.")
+
+# Connect to PostgreSQL
+conn = psycopg2.connect(
+    dbname=dbname,
+    user=user,
+    password=password,
+    host=host,
+    port=port
+)
+
+cursor = conn.cursor()
+
 @app.route('/detect', methods=['POST'])
 def detect():
     image_path = request.json['image_path']
@@ -124,6 +153,25 @@ def detect():
         original_img = Image.open(f).convert('RGB')
     predictions = model(original_img, confidence, iou)
     detections = [p.to_dict() for p in predictions]
+
+    prediction_id = str(uuid.uuid4())
+    for p in predictions:
+        bbox = p.box
+        cursor.execute('''
+            INSERT INTO predictions (prediction_id, image_path, class_name, confidence, bbox_left, bbox_top, bbox_width, bbox_height)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (
+            prediction_id,
+            image_path,
+            str(p.class_name),
+            float(p.confidence),
+            int(bbox.left),
+            int(bbox.top),
+            int(bbox.width),
+            int(bbox.height)
+        ))
+
+    conn.commit()
 
     return jsonify(detections)
 
