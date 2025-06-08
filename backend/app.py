@@ -10,8 +10,12 @@ import os
 import psycopg2
 from dotenv import load_dotenv
 import uuid
+from flask_cors import CORS
+import base64
+import io
 
 app = Flask(__name__)
+CORS(app)
 
 @dataclass
 class BBOX:
@@ -144,36 +148,60 @@ conn = psycopg2.connect(
 
 cursor = conn.cursor()
 
+def decode_base64_image(base64_string: str) -> Image.Image:
+    # Remove data URL prefix if present
+    if base64_string.startswith('data:image'):
+        base64_string = base64_string.split(',')[1]
+    
+    # Decode base64 string
+    image_data = base64.b64decode(base64_string)
+    image = Image.open(io.BytesIO(image_data)).convert('RGB')
+    return image
+
 @app.route('/detect', methods=['POST'])
 def detect():
-    image_path = request.json['image_path']
-    confidence = request.json['confidence']
-    iou = request.json['iou']
-    with open(image_path, 'rb') as f:
-        original_img = Image.open(f).convert('RGB')
-    predictions = model(original_img, confidence, iou)
-    detections = [p.to_dict() for p in predictions]
+    try:
+        confidence = request.json.get('confidence', 0.7)
+        iou = request.json.get('iou', 0.5)
+        if 'image_data' in request.json:
+            image_data = request.json['image_data']
+            original_img = decode_base64_image(image_data)
+            image_source = 'base64_frame'
+        elif 'image_path' in request.json:
+            image_path = request.json['image_path']
+            with open(image_path, 'rb') as f:
+                original_img = Image.open(f).convert('RGB')
+            image_source = image_path
+        else:
+            return jsonify({'error': 'Either image_data or image_path must be provided'}), 400
+        
+        predictions = model(original_img, confidence, iou)
+        detections = [p.to_dict() for p in predictions]
 
-    prediction_id = str(uuid.uuid4())
-    for p in predictions:
-        bbox = p.box
-        cursor.execute('''
-            INSERT INTO predictions (prediction_id, image_path, class_name, confidence, bbox_left, bbox_top, bbox_width, bbox_height)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        ''', (
-            prediction_id,
-            image_path,
-            str(p.class_name),
-            float(p.confidence),
-            int(bbox.left),
-            int(bbox.top),
-            int(bbox.width),
-            int(bbox.height)
-        ))
+        prediction_id = str(uuid.uuid4())
+        for p in predictions:
+            bbox = p.box
+            cursor.execute('''
+                INSERT INTO predictions (prediction_id, image_path, class_name, confidence, bbox_left, bbox_top, bbox_width, bbox_height)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (
+                prediction_id,
+                image_source,
+                str(p.class_name),
+                float(p.confidence),
+                int(bbox.left),
+                int(bbox.top),
+                int(bbox.width),
+                int(bbox.height)
+            ))
 
-    conn.commit()
+        conn.commit()
 
-    return jsonify(detections)
+        return jsonify(detections)
+    
+    except Exception as e:
+        print(f"Error in detect endpoint: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/health_check', methods=['GET'])
 def health_check():
