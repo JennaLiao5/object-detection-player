@@ -30,6 +30,11 @@ GitHub repo: [https://github.com/JennaLiao5/object-detection-player.git](https:/
 git clone https://github.com/JennaLiao5/object-detection-player.git
 cd object-detection-player
 ```
+Important: This project uses Git LFS for large model files such as .onnx.
+
+If you download the project as a ZIP file from GitHub, the ONNX model files will be broken (you'll only get small pointer files).
+
+Please make sure you have [Git LFS](https://git-lfs.github.com/) installed before cloning the repository.
 
 ### 1. Set up environment files
 
