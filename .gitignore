@@ -1,4 +1,3 @@
-*.onnx
 .env
 node_modules/
 *.mp4

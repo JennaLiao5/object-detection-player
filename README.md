@@ -1,24 +1,87 @@
 # Full-stack take-home test for Overview.ai
 
 ## Overview
-This project is a full-stack application that showcases an AI object detection model's predictions through a user-friendly dashboard. The backend is built with Flask in Python, serving predictions from an ONNX model. The front end is developed using React and Fabric.js, providing an interactive interface to display the detected objects. You can edit any backend files, even changing the API structure.
+This project is a full-stack application that showcases an AI object detection model's predictions through a user-friendly dashboard. The backend is built with Flask in Python, serving predictions from an ONNX model. The front end is developed using React and Fabric.js, providing an interactive interface to display the detected objects.
 
 ## The Task
-The task is to create a frontend that interfaces with the backend, plays a video file, sends each frame to the API for prediction, and then shows the results on the frontend. The interface should have a video player, a configuration area for model settings to be configured (such as IoU and Confidence Level), a preview area where each bounding box returned by the model is drawn on top of the predicted frame (using Fabric.JS), and a table for the last 10 prediction results. You may use any video and any UI framework you like. 
+Build a frontend that:
+  - Plays a video file
+  - Periodically captures frames (e.g., every 300ms) and sends them to the `/detect` API
+  - Displays bounding boxes using Fabric.js
+  - Allows configuring model parameters (IoU & Confidence thresholds)
+  - Shows a table with the last 10 detection results
+  - Saves each prediction result to a PostgreSQL database
 
-Each inference result should be saved to a Postgres database on the backend. Feel free to add or modify endpoints.
+## Prerequisites
 
-### Prerequisites
+- **Docker & Docker Compose** (required)
+- **Python 3.8+** (only needed if running backend without Docker)
+- **PostgreSQL** (only needed if running backend without Docker)
+- **Node.js 20+** (only needed if running frontend without Docker)
 
-- Python 3.8 or higher
-- PostgreSQL
+> All Python and Node.js dependencies are already included in the Docker setup. No manual installation is needed unless you run the app outside Docker.
+
+### Running the Project
+GitHub repo: [https://github.com/JennaLiao5/object-detection-player.git](https://github.com/JennaLiao5/object-detection-player.git)
+
+### 0. Clone the repository
+
+```bash
+git clone https://github.com/JennaLiao5/object-detection-player.git
+cd object-detection-player
+```
+
+### 1. Set up environment files
+
+In the root and `backend/` directories, copy the example environment files and fill in your PostgreSQL credentials:
+
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+```
+
+> PostgreSQL will be automatically initialized by Docker based on these environment variables.
+
+### 2. Start services with Docker Compose
+
+```bash
+docker compose up --build
+```
+
+This will launch the backend, frontend, and PostgreSQL services.
+
+### 3. Initialize the database
+
+```bash
+docker compose exec backend bash
+python init_db.py
+```
+
+This script creates the necessary tables inside the PostgreSQL container.
+
+### 4. Access the application
+
+Open your browser and navigate to:
+
+```
+http://localhost:3000
+```
+
+You can now use the object detection dashboard.
 
 ### API Endpoints
 
 - **Detect Objects:**
   - Endpoint: `/detect`
   - Method: POST
-  - Description: Receives an image path, confidence threshold, and IoU threshold and returns the detection results.
+  - Description: Receives an image (either as base64 or file path), confidence threshold, and IoU threshold and returns the detection results.
+  - Request Parameters
+    - You **must provide either** of the following image parameters:
+      - `image_data` (string): Base64-encoded JPEG string (recommended for frontend)
+      - `image_path` (string): Full file path (used internally within backend)
+    - Optional parameters:
+      - `confidence` (float): Detection confidence threshold (default: 0.7)
+      - `iou` (float): IoU threshold for non-maximum suppression (default: 0.5)
   - Example 1:
     - request:
     ```
@@ -57,7 +120,7 @@ Each inference result should be saved to a Postgres database on the backend. Fee
     - request:
     ```
     {
-      "image_path": "https://storage.googleapis.com/sfr-vision-language-research/BLIP/demo.jpg",
+      "image_data": "/9j/4AAQSkZJRgABAQAAAQABAAD…",,
       "confidence": 0.7,
       "iou": 0.5
     }
@@ -90,35 +153,7 @@ Each inference result should be saved to a Postgres database on the backend. Fee
 
 ## Architecture
 
-- **Backend:** Flask application serving the AI model's predictions.
-- **Frontend:** React application with Fabric.js for interactive visualization. Use Typescript. You may use any UI framework you are familiar with.
-- **Database:** PostgreSQL is used to store user inputs and model predictions.
+- **Backend:** Flask + ONNX Runtime
+- **Frontend:** React + Fabric.js (TypeScript)
+- **Database:** PostgreSQL
 
-## Environment Configuration
-
-The backend uses a `.env` file to manage PostgreSQL connection settings.
-
-1. Create the .env file in the backend/ directory
-You can copy the example file:
-
-```bash
-cp backend/.env.example backend/.env
-```
-
-2. Update the .env file with your local PostgreSQL settings
-Make sure to update the values (e.g., database name, user, and password) according to your environment.
-
-Ensure that your PostgreSQL server is running and the specified database already exists before starting the backend.
-
-You can initialize the database schema by running:
-
-```bash
-python backend/init_db.py
-```
-
-
-## Delivery
-
-This assignment should be delivered through GitHub. Please create a **private** repository and add Adriano (@opassos) and Xiao (@xyk2) as collaborators. You should also record a short (2 to 5 minutes) video showcasing your solution. You can upload the video to any streaming service, but we recommend making an **unlisted** video on YouTube. 
-
-Once the hiring process is complete, you can make your work public (both repo and video).
